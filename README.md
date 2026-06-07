@@ -146,6 +146,7 @@ python main.py --mock
 
 ## Sample Execution Output
 
+```text
 Stage 1: Ocean.io
 ✓ 5 Similar Companies Found
 
@@ -163,9 +164,11 @@ Stage 3: Brevo
 
 Pipeline Report Generated:
 pipeline_report.json
+```
 
 ## Example pipeline_report.json
 
+```json
 {
   "companies_found": 5,
   "contacts_found": 1,
@@ -174,6 +177,7 @@ pipeline_report.json
   "emails_failed": 0,
   "emails_skipped": 0
 }
+```
 
 ## Key Features
 
