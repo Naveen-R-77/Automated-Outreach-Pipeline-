@@ -1,6 +1,6 @@
 # Automated Outreach Pipeline (CLI)
 
-A production-ready, interview-grade Python CLI cold outreach automation system. Given a single seed company domain, the pipeline automatically discovers lookalikes, extracts key decision-makers, resolves work emails, and queues personalized outreach campaigns.
+A production-ready Python CLI cold outreach automation system. Given a single seed company domain, the pipeline automatically discovers lookalikes, extracts key decision-makers, resolves work emails, and queues personalized outreach campaigns.
 
 ---
 
