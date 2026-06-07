@@ -108,8 +108,8 @@ Copy `.env.example` to `.env`:
 copy .env.example .env
 ```
 Fill in your API keys in the `.env` file. Be sure to configure the sender variables:
-* `SENDER_EMAIL=naveengowtham999@gmail.com`
-* `SENDER_NAME=Naveen`
+* `SENDER_EMAIL=your_email@example.com`
+* `SENDER_NAME=Your Name`
 
 Do not commit `.env` to source control.
 
@@ -143,3 +143,48 @@ Run the pipeline end-to-end using realistic simulated lookup and validation hand
 ```bash
 python main.py --mock
 ```
+
+## Sample Execution Output
+
+Stage 1: Ocean.io
+✓ 5 Similar Companies Found
+
+Stage 2: Prospeo
+✓ 1 Contact Found
+✓ 1 Email Resolved
+
+Safety Checkpoint
+Total Companies: 5
+Total Contacts: 1
+Total Emails: 1
+
+Stage 3: Brevo
+✓ Outreach Email Sent Successfully
+
+Pipeline Report Generated:
+pipeline_report.json
+
+## Example pipeline_report.json
+
+{
+  "companies_found": 5,
+  "contacts_found": 1,
+  "emails_found": 1,
+  "emails_sent": 1,
+  "emails_failed": 0,
+  "emails_skipped": 0
+}
+
+## Key Features
+
+- Ocean.io company discovery integration
+- Prospeo contact sourcing and email enrichment
+- Brevo email campaign automation
+- Command-line based workflow
+- Safety checkpoint before outreach dispatch
+- Dry-run mode for safe testing
+- Mock mode for development and demonstrations
+- JSON report generation
+- Robust error handling and retry mechanisms
+- Contact and company de-duplication
+- Environment-based secret management
