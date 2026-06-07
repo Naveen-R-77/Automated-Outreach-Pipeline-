@@ -143,21 +143,3 @@ Run the pipeline end-to-end using realistic simulated lookup and validation hand
 ```bash
 python main.py --mock
 ```
-
----
-
-## Interview-Ready Design Decisions
-
-1. **Why Modular Services?**
-   Applying the Single Responsibility Principle, each external API is wrapped in its own service. This allows developers to toggle mock states per service, write modular unit tests, and easily swap out Providers (e.g. swapping Prospeo for Apollo) without touching main orchestration logic.
-2. **How Checkpoint State Recovery Works:**
-   Sourcing databases (Ocean.io, Prospeo) charge credits per query. If the pipeline crashes in the middle of Stage 3, starting from scratch wastes client budget. Saving intermediate outputs (`stageX_*.json`) and progress flags in a lightweight checkpoint file allows instant recovery.
-3. **How Duplicate Contacts are Avoided:**
-   Outreach campaigns must avoid sending repeat emails to the same target. The pipeline implements strict de-duplication:
-   * Company domain uniqueness checking.
-   * LinkedIn profile URL verification.
-   * Email address de-duplication before queue initialization.
-4. **Queue Rate Limit Protections:**
-   Outbox SMTP mailboxes can get flagged if too many requests fire in sub-second periods. We queue sending in batches (default: 50), adding minor delays between individual emails (e.g. 2s) and cooling periods between batches (e.g. 30s) to simulate human sending cadence.
-5. **Accidental Outreach Safeguard:**
-   A terminal-based safety confirmation screen prints the summary of sourced records. The script blocks execution, prompting `Do you want to send emails? (y/N)`. Senders must actively type `y` or `yes` to release campaigns, preventing accidental drafts from firing.
