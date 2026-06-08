@@ -1,6 +1,6 @@
 # Automated Outreach Pipeline (CLI)
 
-A production-ready, interview-grade Python CLI cold outreach automation system. Given a single seed company domain, the pipeline automatically discovers lookalikes, extracts key decision-makers, resolves work emails, and queues personalized outreach campaigns.
+A production-ready Python CLI cold outreach automation system. Given a single seed company domain, the pipeline automatically discovers lookalikes, extracts key decision-makers, resolves work emails, and queues personalized outreach campaigns.
 
 ---
 
@@ -36,15 +36,6 @@ graph TD
 * **Rate Limit & Batching Queue:** Batches emails (default: 50) and introduces cooling delays between dispatches to maintain SMTP reputation.
 * **Sender Email Validation:** Prior to Stage 3 email dispatch, checks for the presence of `SENDER_EMAIL` in the environment. If missing, the pipeline displays `Sender email not configured` and exits gracefully to prevent invalid outreach.
 * **Robust Error Retries:** Uses a custom decorator to catch transient network errors and rate limit triggers, retrying requests using exponential backoff with random jitter. Fails fast without retries on non-retryable errors (e.g. 401 Unauthorized or 403 Forbidden).
-
----
-
-## Credential & Secret Security
-
-> [!IMPORTANT]
-> - **Zero Committed Secrets**: All API keys and credentials must be stored strictly in the `.env` file in the project root.
-> - **Gitignored Environment**: The `.env` file is explicitly included in `.gitignore` to prevent any sensitive credentials, tokens, or auth keys from being committed to public or private source control repository branches.
-> - **No Hardcoding**: Under no circumstances should secrets or API tokens be hardcoded into any Python modules or configuration settings.
 
 ---
 
@@ -108,8 +99,8 @@ Copy `.env.example` to `.env`:
 copy .env.example .env
 ```
 Fill in your API keys in the `.env` file. Be sure to configure the sender variables:
-* `SENDER_EMAIL=naveengowtham999@gmail.com`
-* `SENDER_NAME=Naveen`
+* `SENDER_EMAIL=your_email@example.com`
+* `SENDER_NAME=Your Name`
 
 Do not commit `.env` to source control.
 
@@ -144,20 +135,51 @@ Run the pipeline end-to-end using realistic simulated lookup and validation hand
 python main.py --mock
 ```
 
----
+## Sample Execution Output
 
-## Interview-Ready Design Decisions
+```text
+Stage 1: Ocean.io
+✓ 5 Similar Companies Found
 
-1. **Why Modular Services?**
-   Applying the Single Responsibility Principle, each external API is wrapped in its own service. This allows developers to toggle mock states per service, write modular unit tests, and easily swap out Providers (e.g. swapping Prospeo for Apollo) without touching main orchestration logic.
-2. **How Checkpoint State Recovery Works:**
-   Sourcing databases (Ocean.io, Prospeo) charge credits per query. If the pipeline crashes in the middle of Stage 3, starting from scratch wastes client budget. Saving intermediate outputs (`stageX_*.json`) and progress flags in a lightweight checkpoint file allows instant recovery.
-3. **How Duplicate Contacts are Avoided:**
-   Outreach campaigns must avoid sending repeat emails to the same target. The pipeline implements strict de-duplication:
-   * Company domain uniqueness checking.
-   * LinkedIn profile URL verification.
-   * Email address de-duplication before queue initialization.
-4. **Queue Rate Limit Protections:**
-   Outbox SMTP mailboxes can get flagged if too many requests fire in sub-second periods. We queue sending in batches (default: 50), adding minor delays between individual emails (e.g. 2s) and cooling periods between batches (e.g. 30s) to simulate human sending cadence.
-5. **Accidental Outreach Safeguard:**
-   A terminal-based safety confirmation screen prints the summary of sourced records. The script blocks execution, prompting `Do you want to send emails? (y/N)`. Senders must actively type `y` or `yes` to release campaigns, preventing accidental drafts from firing.
+Stage 2: Prospeo
+✓ 1 Contact Found
+✓ 1 Email Resolved
+
+Safety Checkpoint
+Total Companies: 5
+Total Contacts: 1
+Total Emails: 1
+
+Stage 3: Brevo
+✓ Outreach Email Sent Successfully
+
+Pipeline Report Generated:
+pipeline_report.json
+```
+
+## Example pipeline_report.json
+
+```json
+{
+  "companies_found": 5,
+  "contacts_found": 1,
+  "emails_found": 1,
+  "emails_sent": 1,
+  "emails_failed": 0,
+  "emails_skipped": 0
+}
+```
+
+## Key Features
+
+- Ocean.io company discovery integration
+- Prospeo contact sourcing and email enrichment
+- Brevo email campaign automation
+- Command-line based workflow
+- Safety checkpoint before outreach dispatch
+- Dry-run mode for safe testing
+- Mock mode for development and demonstrations
+- JSON report generation
+- Robust error handling and retry mechanisms
+- Contact and company de-duplication
+- Environment-based secret management
