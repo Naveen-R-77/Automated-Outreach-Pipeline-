@@ -39,15 +39,6 @@ graph TD
 
 ---
 
-## Credential & Secret Security
-
-> [!IMPORTANT]
-> - **Zero Committed Secrets**: All API keys and credentials must be stored strictly in the `.env` file in the project root.
-> - **Gitignored Environment**: The `.env` file is explicitly included in `.gitignore` to prevent any sensitive credentials, tokens, or auth keys from being committed to public or private source control repository branches.
-> - **No Hardcoding**: Under no circumstances should secrets or API tokens be hardcoded into any Python modules or configuration settings.
-
----
-
 ## Directory Structure
 
 ```
