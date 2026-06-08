@@ -20,7 +20,7 @@ class OceanService(BaseService):
         seed_brand = seed_domain.split(".")[0].lower() # e.g. "google" from "google.com"
 
         if self.mock_mode:
-            self.logger.info(f"[OceanService] [SIMULATION] Generating {limit} mock lookalike companies for domain '{seed_domain}'...")
+            self.logger.debug(f"[OceanService] [SIMULATION] Generating {limit} mock lookalike companies for domain '{seed_domain}'...")
             mock_names = [
                 "Sololearn", "Qualified.io", "HackerRank", "Coderbyte", "Codewars", 
                 "Sphere Engine", "Codility", "CodeSignal", "FreeCodeCamp", "Code.org", 
@@ -86,7 +86,7 @@ class OceanService(BaseService):
             allowed_brackets = all_brackets
 
         # Structured log: API request start
-        self.logger.info(f"[OceanService] API Request starting for domain: '{seed_domain}' (target limit: {limit})...")
+        self.logger.debug(f"[OceanService] API Request starting for domain: '{seed_domain}' (target limit: {limit})...")
 
         while len(companies) < limit and has_more:
             # Batch size is the minimum of remaining limit and 50
@@ -132,7 +132,7 @@ class OceanService(BaseService):
                 company_list = res_data.get("companies", [])
                 
                 # Structured log: API success
-                self.logger.info(
+                self.logger.debug(
                     f"[OceanService] API Success: Sourced {len(company_list)} lookalikes in this batch. "
                     f"Total accumulated so far: {len(companies) + len(company_list)}"
                 )
@@ -173,5 +173,5 @@ class OceanService(BaseService):
                 seen_domains.add(comp.domain.lower())
                 unique_companies.append(comp)
                 
-        self.logger.info(f"[OceanService] Sourced {len(unique_companies)} unique lookalike companies.")
+        self.logger.debug(f"[OceanService] Sourced {len(unique_companies)} unique lookalike companies.")
         return unique_companies

@@ -19,7 +19,10 @@ def setup_logger(name: str = "pipeline") -> logging.Logger:
         markup=True,
         show_path=False
     )
-    console_handler.setLevel(logging.INFO)
+    if settings.DEBUG_MODE:
+        console_handler.setLevel(logging.DEBUG)
+    else:
+        console_handler.setLevel(logging.INFO)
     console_formatter = logging.Formatter("%(message)s")
     console_handler.setFormatter(console_formatter)
     logger.addHandler(console_handler)

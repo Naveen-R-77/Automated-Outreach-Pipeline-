@@ -5,6 +5,9 @@ from dotenv import load_dotenv
 # Load environment variables from .env
 load_dotenv()
 
+# Global Debug Mode Configuration
+DEBUG_MODE = os.getenv("DEBUG_MODE", "false").lower() == "true"
+
 # Base paths
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = PROJECT_ROOT / "data"

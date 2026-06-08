@@ -71,7 +71,7 @@ def save_csv(file_path: Path, headers: List[str], rows: List[List[Any]]) -> None
             writer = csv.writer(f)
             writer.writerow(headers)
             writer.writerows(rows)
-        logger.info(f"Successfully generated CSV report at [CSV]({file_path.as_uri()})")
+        logger.debug(f"Successfully generated CSV report at [CSV]({file_path.as_uri()})")
     except Exception as e:
         logger.error(f"Failed to generate CSV report at {file_path}: {e}")
         raise e
@@ -85,13 +85,13 @@ def save_checkpoint(seed_domain: str, last_completed_stage: int) -> None:
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S")
     }
     save_json(settings.CHECKPOINT_FILE, checkpoint_data)
-    logger.info(f"Checkpoint saved: Stage {last_completed_stage} completed for domain '{seed_domain}'")
+    logger.debug(f"Checkpoint saved: Stage {last_completed_stage} completed for domain '{seed_domain}'")
 
 def load_checkpoint() -> Optional[Dict[str, Any]]:
     """Loads checkpoint data if it exists and is valid."""
     data = load_json(settings.CHECKPOINT_FILE)
     if data:
-        logger.info(f"Checkpoint found: Stage {data['last_completed_stage']} completed for '{data['seed_domain']}'")
+        logger.debug(f"Checkpoint found: Stage {data['last_completed_stage']} completed for '{data['seed_domain']}'")
         return data
     return None
 

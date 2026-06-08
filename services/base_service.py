@@ -16,12 +16,12 @@ class BaseService(ABC):
         self.logger = logger
         
         if self.mock_mode:
-            self.logger.warning(
+            self.logger.debug(
                 f"[{self.service_name}] Initialized in DEVELOPMENT/SIMULATION MODE. "
                 "No live API requests will be performed."
             )
         else:
-            self.logger.info(f"[{self.service_name}] Initialized in PRODUCTION LIVE MODE.")
+            self.logger.debug(f"[{self.service_name}] Initialized in PRODUCTION LIVE MODE.")
             
     def validate_credentials(self) -> bool:
         """Helper to ensure API keys are configured for live requests."""

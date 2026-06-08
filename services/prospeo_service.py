@@ -106,7 +106,7 @@ class ProspeoService(BaseService):
         Focuses on seniorities and titles like Founder, CEO, CTO, COO, VP, Director, and Head Of.
         """
         if self.mock_mode:
-            self.logger.info(f"[Prospeo] [SIMULATION] Generating mock contacts for domain '{domain}'...")
+            self.logger.debug(f"[Prospeo] [SIMULATION] Generating mock contacts for domain '{domain}'...")
             
             # Short delay in simulation mode to show progress without hanging the CLI
             time.sleep(0.1)
@@ -142,7 +142,7 @@ class ProspeoService(BaseService):
                     company_name=company_name,
                     company_domain=domain
                 ))
-                self.logger.info(f"[Prospeo] Contact Added: {full} ({title})")
+                self.logger.debug(f"[Prospeo] Contact Added: {full} ({title})")
                 
             return contacts_list
 
@@ -167,7 +167,7 @@ class ProspeoService(BaseService):
         backoff_factor = 2.0
 
         # Structured log: Real API Request Started
-        self.logger.info(f"[Prospeo] Real API Request Started for domain: {domain}")
+        self.logger.debug(f"[Prospeo] Real API Request Started for domain: {domain}")
 
         # Targeted job titles for validation/filtering in code
         target_titles = ["founder", "ceo", "cto", "coo", "vp", "director", "head of"]
@@ -198,12 +198,12 @@ class ProspeoService(BaseService):
 
                 for attempt in range(1, self.max_retries + 1):
                     # 1. Proactive throttling: Sleep PROSPEO_REQUEST_DELAY before EVERY request attempt
-                    self.logger.info("[Prospeo] Request Throttled")
+                    self.logger.debug("[Prospeo] Request Throttled")
                     time.sleep(self.request_delay)
 
                     # Log: Retrying Request if attempt > 1
                     if attempt > 1:
-                        self.logger.info("[Prospeo] Retrying Request")
+                        self.logger.debug("[Prospeo] Retrying Request")
 
                     try:
                         self.logger.debug(f"[Prospeo] POST Request to {self.base_url} (Page {page}, Domain: {domain}, Attempt {attempt})...")
@@ -221,7 +221,7 @@ class ProspeoService(BaseService):
                                 if err_json.get("error_code") == "NO_RESULTS":
                                     self.stats["Successful Requests"] += 1
                                     if attempt > 1:
-                                        self.logger.info("[Prospeo] Retry Successful")
+                                        self.logger.debug("[Prospeo] Retry Successful")
                                     reason = "API returned 400 NO_RESULTS"
                                     res_data = {"error": False, "results": []}
                                     attempt_success = True
@@ -241,7 +241,7 @@ class ProspeoService(BaseService):
                         # Increment Successful Requests statistic
                         self.stats["Successful Requests"] += 1
                         if attempt > 1:
-                            self.logger.info("[Prospeo] Retry Successful")
+                            self.logger.debug("[Prospeo] Retry Successful")
 
                         res_data = response.json()
                         attempt_success = True
@@ -299,7 +299,7 @@ class ProspeoService(BaseService):
                             sleep_time = max(1.0, base_sleep + jitter)
                             
                             # Structured log: Waiting X Seconds (note the Capital 'S')
-                            self.logger.info(f"[Prospeo] Waiting {int(sleep_time)} Seconds")
+                            self.logger.debug(f"[Prospeo] Waiting {int(sleep_time)} Seconds")
                         else:
                             # Exponential backoff for network or other non-429 exceptions
                             sleep_time = initial_delay * (backoff_factor ** (attempt - 1))
@@ -322,7 +322,7 @@ class ProspeoService(BaseService):
                     raise ValueError(f"Prospeo API Error: {err_msg}")
 
                 # Structured log: Real API Response Received
-                self.logger.info(f"[Prospeo] Real API Response Received for domain: {domain}")
+                self.logger.debug(f"[Prospeo] Real API Response Received for domain: {domain}")
 
                 # Print raw response schema once in debug mode
                 if not self._schema_printed and res_data.get("results"):
@@ -338,7 +338,7 @@ class ProspeoService(BaseService):
                     break
 
                 # Structured log: Contacts Extracted (log that raw contacts were fetched on this page)
-                self.logger.info(f"[Prospeo] Contacts Extracted: Found {len(results)} raw search results on page {page} for domain: {domain}")
+                self.logger.debug(f"[Prospeo] Contacts Extracted: Found {len(results)} raw search results on page {page} for domain: {domain}")
 
                 # Parse results
                 for item in results:
@@ -393,7 +393,7 @@ class ProspeoService(BaseService):
                     contacts.append(contact_obj)
 
                     # Structured log: Contact Added
-                    self.logger.info(f"[Prospeo] Contact Added: {full} ({title})")
+                    self.logger.debug(f"[Prospeo] Contact Added: {full} ({title})")
 
                     if len(contacts) >= limit:
                         break
@@ -406,7 +406,7 @@ class ProspeoService(BaseService):
                 if len(contacts) < limit and current_page < total_page:
                     page += 1
                     # Structured log: Pagination Next Page
-                    self.logger.info(f"[Prospeo] Pagination Next Page: moving to page {page} for domain {domain}")
+                    self.logger.debug(f"[Prospeo] Pagination Next Page: moving to page {page} for domain {domain}")
                 else:
                     has_more = False
 
@@ -418,17 +418,17 @@ class ProspeoService(BaseService):
         if not contacts:
             if not reason:
                 reason = "No matching contacts found after applying seniority filters"
-            self.logger.info(f"[Prospeo] No Contacts Found for domain: {domain}. Reason: {reason}")
+            self.logger.debug(f"[Prospeo] No Contacts Found for domain: {domain}. Reason: {reason}")
             return []
 
         # Print how many contacts were final-extracted
-        self.logger.info(f"[Prospeo] Contacts Extracted: Successfully mapped {len(contacts)} contacts for domain: {domain}")
+        self.logger.debug(f"[Prospeo] Contacts Extracted: Successfully mapped {len(contacts)} contacts for domain: {domain}")
         return contacts[:limit]
 
     def resolve_email(self, linkedin_url: str, first_name: str = "", last_name: str = "", company_domain: str = "") -> Optional[str]:
         """Resolves a contact's work email using Prospeo's Enrich Person API."""
         if self.mock_mode:
-            self.logger.info(f"[Prospeo] [SIMULATION] Resolving email for LinkedIn: {linkedin_url}...")
+            self.logger.debug(f"[Prospeo] [SIMULATION] Resolving email for LinkedIn: {linkedin_url}...")
             time.sleep(0.1)
             self.stats["Total Requests"] += 1
             self.stats["Successful Requests"] += 1
@@ -471,7 +471,7 @@ class ProspeoService(BaseService):
         if company_domain:
             payload["data"]["company_website"] = company_domain
 
-        self.logger.info(f"[Prospeo] Real API Enrichment Request Started for: {linkedin_url}")
+        self.logger.debug(f"[Prospeo] Real API Enrichment Request Started for: {linkedin_url}")
 
         enrich_url = "https://api.prospeo.io/enrich-person"
         res_data = None
@@ -480,10 +480,10 @@ class ProspeoService(BaseService):
 
         for attempt in range(1, self.max_retries + 1):
             # Proactive throttling
-            self.logger.info("[Prospeo] Request Throttled")
+            self.logger.debug("[Prospeo] Request Throttled")
             time.sleep(self.request_delay)
             if attempt > 1:
-                self.logger.info(f"[Prospeo] Retrying Enrichment Request (Attempt {attempt})...")
+                self.logger.debug(f"[Prospeo] Retrying Enrichment Request (Attempt {attempt})...")
 
             try:
                 self.stats["Total Requests"] += 1
@@ -498,7 +498,7 @@ class ProspeoService(BaseService):
                 response.raise_for_status()
                 self.stats["Successful Requests"] += 1
                 if attempt > 1:
-                    self.logger.info("[Prospeo] Retry Successful")
+                    self.logger.debug("[Prospeo] Retry Successful")
                 res_data = response.json()
                 attempt_success = True
                 break
@@ -544,7 +544,7 @@ class ProspeoService(BaseService):
                     import random
                     jitter = random.uniform(-1.0, 1.0)
                     sleep_time = max(1.0, base_sleep + jitter)
-                    self.logger.info(f"[Prospeo] Waiting {int(sleep_time)} Seconds")
+                    self.logger.debug(f"[Prospeo] Waiting {int(sleep_time)} Seconds")
                 else:
                     sleep_time = 2.0 * (2.0 ** (attempt - 1))
                     self.logger.warning(f"[Prospeo] Retry Attempt {attempt} for domain: {company_domain} due to error: {e}")
@@ -552,11 +552,13 @@ class ProspeoService(BaseService):
                 time.sleep(sleep_time)
 
         if not attempt_success or not res_data:
-            self.logger.info(f"[Prospeo] Email resolution failed for {linkedin_url}. Reason: {reason or 'Request unsuccessful'}")
+            self.logger.debug(f"[Prospeo] Email resolution failed for {linkedin_url}. Reason: {reason or 'Request unsuccessful'}")
             return None
 
         # Print raw response (Requirement 2)
-        rprint(f"[bold magenta]Raw Prospeo Response:[/bold magenta] {res_data}")
+        from config import settings
+        if settings.DEBUG_MODE:
+            rprint(f"[bold magenta]Raw Prospeo Response:[/bold magenta] {res_data}")
 
         # Response schema validation (Requirement 8)
         is_valid_schema = False
@@ -572,7 +574,12 @@ class ProspeoService(BaseService):
                     is_valid_schema = True
         
         if not is_valid_schema:
-            self.logger.warning(f"[Prospeo] Response schema validation failed: {res_data}")
+            from config import settings
+            if settings.DEBUG_MODE:
+                self.logger.warning(f"[Prospeo] Response schema validation failed: {res_data}")
+            else:
+                self.logger.warning("[Prospeo] Response schema validation failed.")
+                self.logger.debug(f"[Prospeo] Invalid schema response data: {res_data}")
 
         # Save raw response to data/debug_prospeo_responses.json (Requirement 9)
         from pathlib import Path
@@ -626,8 +633,8 @@ class ProspeoService(BaseService):
             email = None
 
         # Add debug logging (Requirement 6)
-        self.logger.info(f"Raw Prospeo Response: {res_data}")
-        self.logger.info(f"Mapped Email: {email}")
-        self.logger.info(f"Mapped LinkedIn: {linkedin_url}")
+        self.logger.debug(f"Raw Prospeo Response: {res_data}")
+        self.logger.debug(f"Mapped Email: {email}")
+        self.logger.debug(f"Mapped LinkedIn: {linkedin_url}")
 
         return email

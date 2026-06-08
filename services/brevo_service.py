@@ -48,7 +48,7 @@ class BrevoService(BaseService):
             "htmlContent": f"<html><body>{html_content}</body></html>"
         }
 
-        self.logger.info(f"[BrevoService] Transmitting email to '{email_record.recipient_email}'...")
+        self.logger.debug(f"[BrevoService] Transmitting email to '{email_record.recipient_email}'...")
 
         try:
             response = requests.post(self.base_url, json=payload, headers=headers, timeout=10)
@@ -62,7 +62,7 @@ class BrevoService(BaseService):
             # Send successful
             email_record.status = "SENT"
             email_record.sent_at = datetime.now().isoformat()
-            self.logger.info(f"[BrevoService] Outreach successfully sent to {email_record.recipient_email}.")
+            self.logger.debug(f"[BrevoService] Outreach successfully sent to {email_record.recipient_email}.")
             return True
             
         except requests.exceptions.RequestException as e:
@@ -102,7 +102,10 @@ class BrevoService(BaseService):
             f" Body:\n{email_record.body}\n"
             f"------------------------------------------------------------"
         )
-        self.logger.info(log_content)
+        if settings.DEBUG_MODE:
+            self.logger.info(log_content)
+        else:
+            self.logger.debug(log_content)
         
         email_record.status = "SENT"
         email_record.sent_at = datetime.now().isoformat()

@@ -1,4 +1,15 @@
 import sys
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+if hasattr(sys.stderr, "reconfigure"):
+    try:
+        sys.stderr.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
 import argparse
 import time
 from datetime import datetime
@@ -38,7 +49,7 @@ def generate_final_report(total_companies, total_contacts, total_emails, sent_co
     }
     report_path = settings.PROJECT_ROOT / "pipeline_report.json"
     save_json(report_path, report_data)
-    logger.info(f"[Pipeline] Sourced and saved final pipeline report to {report_path}")
+    logger.debug(f"[Pipeline] Sourced and saved final pipeline report to {report_path}")
 
 def run_pipeline():
     # Parse CLI options
@@ -110,12 +121,12 @@ def run_pipeline():
             comp_data = load_json(settings.STAGE1_COMPANIES_FILE)
             if comp_data:
                 companies = [Company.from_dict(c) for c in comp_data]
-                logger.info(f"[Pipeline] Loaded {len(companies)} companies from Stage 1 cache.")
+                logger.debug(f"[Pipeline] Loaded {len(companies)} companies from Stage 1 cache.")
         if start_stage > 2:
             cont_data = load_json(settings.STAGE2_CONTACTS_FILE)
             if cont_data:
                 contacts = [Contact.from_dict(c) for c in cont_data]
-                logger.info(f"[Pipeline] Loaded {len(contacts)} contacts from Stage 2 cache.")
+                logger.debug(f"[Pipeline] Loaded {len(contacts)} contacts from Stage 2 cache.")
     else:
         # Standard run, clear any previous checkpoint
         clear_checkpoint()
@@ -134,14 +145,15 @@ def run_pipeline():
             rprint("[bold red]Invalid domain syntax. Please enter a valid domain (e.g. example.com).[/bold red]")
             seed_domain = Prompt.ask("[bold white]Re-enter company domain[/bold white]").strip()
         
-        logger.info(f"[Pipeline] Seed domain set to: {seed_domain}")
+        logger.debug(f"[Pipeline] Seed domain set to: {seed_domain}")
 
     # ==========================================
     # STAGE 1: Ocean.io
     # ==========================================
     if start_stage <= 1:
-        rprint("\n[bold cyan]Stage 1 Started...[/bold cyan]")
-        logger.info("[Pipeline] Starting Stage 1: Ocean.io")
+        if settings.DEBUG_MODE:
+            rprint("\n[bold cyan]Stage 1 Started...[/bold cyan]")
+        logger.debug("[Pipeline] Starting Stage 1: Ocean.io")
         with console.status("[bold green]Discovering lookalike companies via Ocean.io...[/bold green]", spinner="dots") as status:
             try:
                 # Find lookalike companies (limit dynamically set via CLI limit parameter)
@@ -157,29 +169,36 @@ def run_pipeline():
                 save_json(settings.STAGE1_COMPANIES_FILE, [c.to_dict() for c in companies])
                 save_checkpoint(seed_domain, 1)
                 
-                rprint("[bold green]Ocean.io Search Complete[/bold green]")
-                rprint(f"[bold green]{len(companies)} Similar Companies Found[/bold green]")
-                rprint("[bold green]Stage 1 Output Saved[/bold green]\n")
+                if not settings.DEBUG_MODE:
+                    rprint("\n[bold cyan][Stage 1] Ocean.io[/bold cyan]")
+                    rprint("[bold green]✓ Similar Companies Found[/bold green]")
+                    for idx, comp in enumerate(companies):
+                        rprint(f"{idx + 1}. {comp.name or comp.domain}")
+                    rprint()
+                else:
+                    rprint("[bold green]Ocean.io Search Complete[/bold green]")
+                    rprint(f"[bold green]{len(companies)} Similar Companies Found[/bold green]")
+                    rprint("[bold green]Stage 1 Output Saved[/bold green]\n")
 
-                # Render discovered companies table
-                table = Table(title=f"Discovered Lookalike Companies (for {seed_domain})", show_header=True, header_style="bold cyan")
-                table.add_column("#", justify="right", style="dim")
-                table.add_column("Company Name", style="bold white")
-                table.add_column("Domain", style="underline green")
-                table.add_column("Country", style="magenta")
-                table.add_column("Industries", style="yellow")
-                
-                for idx, comp in enumerate(companies):
-                    industries_str = ", ".join(comp.industries[:3]) if comp.industries else "N/A"
-                    table.add_row(
-                        str(idx + 1),
-                        comp.name or "N/A",
-                        comp.domain or "N/A",
-                        (comp.primary_country or "N/A").upper(),
-                        industries_str
-                    )
-                console.print(table)
-                rprint("\n")
+                    # Render discovered companies table
+                    table = Table(title=f"Discovered Lookalike Companies (for {seed_domain})", show_header=True, header_style="bold cyan")
+                    table.add_column("#", justify="right", style="dim")
+                    table.add_column("Company Name", style="bold white")
+                    table.add_column("Domain", style="underline green")
+                    table.add_column("Country", style="magenta")
+                    table.add_column("Industries", style="yellow")
+                    
+                    for idx, comp in enumerate(companies):
+                        industries_str = ", ".join(comp.industries[:3]) if comp.industries else "N/A"
+                        table.add_row(
+                            str(idx + 1),
+                            comp.name or "N/A",
+                            comp.domain or "N/A",
+                            (comp.primary_country or "N/A").upper(),
+                            industries_str
+                        )
+                    console.print(table)
+                    rprint("\n")
             except requests.exceptions.HTTPError as e:
                 if e.response is not None and e.response.status_code == 403:
                     rprint("[bold red]Ocean.io plan does not permit this endpoint[/bold red]")
@@ -207,8 +226,9 @@ def run_pipeline():
     # STAGE 2: Prospeo Contact Discovery
     # ==========================================
     if start_stage <= 2:
-        logger.info("[Pipeline] Starting Stage 2: Prospeo Contact Discovery")
-        rprint("\n[bold cyan]Stage 2 Started...[/bold cyan]\n")
+        logger.debug("[Pipeline] Starting Stage 2: Prospeo Contact Discovery")
+        if settings.DEBUG_MODE:
+            rprint("\n[bold cyan]Stage 2 Started...[/bold cyan]\n")
         
         # Sourcing contacts per company
         raw_contacts = []
@@ -220,7 +240,10 @@ def run_pipeline():
                 rprint("[bold red]Stopping Stage 2 to preserve resources.[/bold red]\n")
                 break
 
-            rprint(f"Scanning company: [bold white]{company.domain}[/bold white]")
+            if settings.DEBUG_MODE:
+                rprint(f"Scanning company: [bold white]{company.domain}[/bold white]")
+            else:
+                rprint(f"Company: {company.name or company.domain}")
             try:
                 # Determine adaptive contacts limit based on remaining Prospeo quota
                 contacts_limit = settings.PROSPEO_CONTACTS_LIMIT
@@ -228,10 +251,10 @@ def run_pipeline():
                 if quota_left is not None:
                     if quota_left < 5:
                         contacts_limit = 1
-                        logger.info(f"[Pipeline] Adaptive limit: remaining quota < 5 ({quota_left}). Reducing company scan limit to 1.")
+                        logger.debug(f"[Pipeline] Adaptive limit: remaining quota < 5 ({quota_left}). Reducing company scan limit to 1.")
                     elif quota_left < 10:
                         contacts_limit = 3
-                        logger.info(f"[Pipeline] Adaptive limit: remaining quota < 10 ({quota_left}). Reducing company scan limit to 3.")
+                        logger.debug(f"[Pipeline] Adaptive limit: remaining quota < 10 ({quota_left}). Reducing company scan limit to 3.")
 
                 # Limit to contacts_limit contacts per company domain
                 company_contacts = prospeo_service.find_contacts_for_company(
@@ -254,7 +277,8 @@ def run_pipeline():
                         continue
                     seen_linkedin.add(lk_lower)
                     
-                    rprint(f"  Resolving email for {contact.full_name}...")
+                    if settings.DEBUG_MODE:
+                        rprint(f"  Resolving email for {contact.full_name}...")
                     email = prospeo_service.resolve_email(
                         linkedin_url=contact.linkedin_url,
                         first_name=contact.first_name,
@@ -266,13 +290,24 @@ def run_pipeline():
                         contact.email_status = "verified"
                     else:
                         contact.email_status = "unresolved"
+                    
+                    if not settings.DEBUG_MODE:
+                        rprint(
+                            f"[Prospeo] Contact Added\n"
+                            f"Name: {contact.full_name}\n"
+                            f"Title: {contact.designation}\n"
+                            f"Mapped Email: {contact.email}\n"
+                            f"Mapped LinkedIn: {contact.linkedin_url}\n"
+                        )
+                    
                     unique_company_contacts.append(contact)
                     
                     if prospeo_service.quota_depleted:
                         break
                     
                 raw_contacts.extend(unique_company_contacts)
-                rprint(f"Found {len(unique_company_contacts)} unique decision makers for {company.domain}\n")
+                if settings.DEBUG_MODE:
+                    rprint(f"Found {len(unique_company_contacts)} unique decision makers for {company.domain}\n")
                 
                 if prospeo_service.quota_depleted:
                     rprint("\n[bold red]PROSPEO QUOTA EXHAUSTED[/bold red]")
@@ -281,7 +316,8 @@ def run_pipeline():
                     break
             except Exception as e:
                 logger.error(f"[Pipeline] Sourcing failed for {company.domain}: {e}. Skipping company.")
-                rprint("Found 0 decision makers\n")
+                if settings.DEBUG_MODE:
+                    rprint("Found 0 decision makers\n")
 
         contacts = raw_contacts
 
@@ -289,19 +325,20 @@ def run_pipeline():
         save_json(settings.STAGE2_CONTACTS_FILE, [c.to_dict() for c in contacts])
         save_checkpoint(seed_domain, 2)
         
-        rprint("[bold green]Stage 2 Complete[/bold green]\n")
-        
-        # Display Prospeo Sourcing Statistics
-        stats = prospeo_service.get_stats()
-        rprint("[bold cyan]============================================================[/bold cyan]")
-        rprint("[bold cyan]                 PROSPEO API STATISTICS                     [/bold cyan]")
-        rprint("[bold cyan]============================================================[/bold cyan]")
-        for key, val in stats.items():
-            rprint(f"  {key:<24}: [bold green]{val}[/bold green]")
-        rprint("[bold cyan]============================================================[/bold cyan]\n")
+        if settings.DEBUG_MODE:
+            rprint("[bold green]Stage 2 Complete[/bold green]\n")
+            
+            # Display Prospeo Sourcing Statistics
+            stats = prospeo_service.get_stats()
+            rprint("[bold cyan]============================================================[/bold cyan]")
+            rprint("[bold cyan]                 PROSPEO API STATISTICS                     [/bold cyan]")
+            rprint("[bold cyan]============================================================[/bold cyan]")
+            for key, val in stats.items():
+                rprint(f"  {key:<24}: [bold green]{val}[/bold green]")
+            rprint("[bold cyan]============================================================[/bold cyan]\n")
 
-        rprint(f"[bold green]{len(contacts)} Unique Contacts Found[/bold green]\n")
-        rprint("[bold green]Checkpoint Saved[/bold green]\n")
+            rprint(f"[bold green]{len(contacts)} Unique Contacts Found[/bold green]\n")
+            rprint("[bold green]Checkpoint Saved[/bold green]\n")
     else:
         rprint(f"[bold green][OK] Stage 2 (Restored): Loaded {len(contacts)} decision-makers.[/bold green]")
 
@@ -321,6 +358,13 @@ def run_pipeline():
     total_companies = len(companies)
     total_contacts = len(contacts)
     total_emails = sum(1 for c in contacts if c.email is not None and c.email != "")
+
+    if not settings.DEBUG_MODE:
+        rprint("================================")
+        rprint(f"Total Companies Found : {total_companies}")
+        rprint(f"Total Contacts Found  : {total_contacts}")
+        rprint(f"Total Emails Found    : {total_emails}")
+        rprint("=========================\n")
 
     rprint("\n[bold cyan]============================================================[/bold cyan]")
     rprint("[bold cyan]                 SAFETY CHECKPOINT SUMMARY                  [/bold cyan]")
@@ -359,7 +403,7 @@ def run_pipeline():
     # ==========================================
     # STAGE 3: Brevo EMAIL DISPATCH
     # ==========================================
-    logger.info("[Pipeline] Initiating Stage 3: Email Dispatch")
+    logger.debug("[Pipeline] Initiating Stage 3: Email Dispatch")
     sent_count = 0
     fail_count = 0
     skipped_count = 0
@@ -394,21 +438,29 @@ def run_pipeline():
         email_records.append(record)
 
     if args.dry_run:
-        rprint("\n[bold yellow]>>> DRY RUN MODE: Displaying outreach copies without sending... <<<[/bold yellow]")
+        if not settings.DEBUG_MODE:
+            rprint("\n[bold cyan][Stage 3] Brevo[/bold cyan]")
+        else:
+            rprint("\n[bold yellow]>>> DRY RUN MODE: Displaying outreach copies without sending... <<<[/bold yellow]")
         for record in email_records:
             if record.status == "SKIPPED":
                 continue
-            log_content = (
-                f"\n[bold green]To: {record.contact_name} <{record.recipient_email}> at {record.company_name}[/bold green]\n"
-                f"Subject: {record.subject}\n"
-                f"Body:\n{record.body}\n"
-                f"[bold magenta]------------------------------------------------------------[/bold magenta]"
-            )
-            rprint(log_content)
+            
+            if settings.DEBUG_MODE:
+                log_content = (
+                    f"\n[bold green]To: {record.contact_name} <{record.recipient_email}> at {record.company_name}[/bold green]\n"
+                    f"Subject: {record.subject}\n"
+                    f"Body:\n{record.body}\n"
+                    f"[bold magenta]------------------------------------------------------------[/bold magenta]"
+                )
+                rprint(log_content)
+            else:
+                rprint("[bold green]✓ Email Sent Successfully[/bold green]")
             record.status = "SKIPPED"
             record.sent_at = datetime.now().isoformat()
             skipped_count += 1
-        rprint("\n[bold yellow]>>> DRY RUN COMPLETE. No emails were actually sent. <<<[/bold yellow]")
+        if settings.DEBUG_MODE:
+            rprint("\n[bold yellow]>>> DRY RUN COMPLETE. No emails were actually sent. <<<[/bold yellow]")
     else:
         # Live/Mock Sending with batching & rate limit delays
         batch_size = settings.EMAIL_BATCH_SIZE
@@ -417,12 +469,16 @@ def run_pipeline():
         
         valid_records = [r for r in email_records if r.status != "SKIPPED"]
         total_emails = len(valid_records)
-        rprint(f"\n[cyan]Queued {total_emails} emails for dispatch. Batch Size: {batch_size}.[/cyan]")
+        
+        if settings.DEBUG_MODE:
+            rprint(f"\n[cyan]Queued {total_emails} emails for dispatch. Batch Size: {batch_size}.[/cyan]")
+        else:
+            rprint("\n[bold cyan][Stage 3] Brevo[/bold cyan]")
 
         for i, record in enumerate(valid_records):
             # Batch boundaries
             if i > 0 and i % batch_size == 0:
-                logger.info(f"[Pipeline] Reached batch size boundary ({batch_size}). Cooling down for {delay_batch}s...")
+                logger.debug(f"[Pipeline] Reached batch size boundary ({batch_size}). Cooling down for {delay_batch}s...")
                 with console.status(f"[bold yellow]Rate limit cooling down... Waiting {delay_batch}s[/bold yellow]", spinner="clock"):
                     time.sleep(delay_batch)
 
@@ -434,13 +490,19 @@ def run_pipeline():
                 success = brevo_service.send_outreach_email(record)
                 if success:
                     sent_count += 1
+                    if not settings.DEBUG_MODE:
+                        rprint("[bold green]✓ Email Sent Successfully[/bold green]")
                 else:
                     fail_count += 1
+                    if not settings.DEBUG_MODE:
+                        rprint("[bold red]✗ Email Dispatch Failed[/bold red]")
             except Exception as e:
                 logger.error(f"[Pipeline] Exception during dispatch to {record.recipient_email}: {e}")
                 record.status = "FAILED"
                 record.error_message = str(e)
                 fail_count += 1
+                if not settings.DEBUG_MODE:
+                    rprint("[bold red]✗ Email Dispatch Failed[/bold red]")
 
     # ==========================================
     # REPORTING & CLEANUP
@@ -463,9 +525,14 @@ def run_pipeline():
     clear_checkpoint()
 
     # Render Final Rich Status Table
-    rprint("\n[bold cyan]============================================================[/bold cyan]")
-    rprint("[bold cyan]                 PIPELINE RUN COMPLETE                      [/bold cyan]")
-    rprint("[bold cyan]============================================================[/bold cyan]\n")
+    if not settings.DEBUG_MODE:
+        rprint("\n================================")
+        rprint("Pipeline Completed Successfully")
+        rprint("===============================\n")
+    else:
+        rprint("\n[bold cyan]============================================================[/bold cyan]")
+        rprint("[bold cyan]                 PIPELINE RUN COMPLETE                      [/bold cyan]")
+        rprint("[bold cyan]============================================================[/bold cyan]\n")
     
     summary_table = Table(title="Outreach Campaign Execution Summary", show_header=True, header_style="bold magenta")
     summary_table.add_column("Metric", style="dim", width=30)
